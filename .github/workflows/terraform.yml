@@ -2,8 +2,7 @@ name: Terraform CI
 
 on:
   push:
-    branches:
-      - main
+    branches: [ "main" ]
   pull_request:
 
 jobs:
@@ -11,9 +10,19 @@ jobs:
     name: Terraform Validation & Plan
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: read
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -30,4 +39,12 @@ jobs:
 
       - name: Generate Terraform Plan
         working-directory: terraform
-        run: terraform plan -no-color
+        run: |
+          terraform plan -no-color -out=tfplan
+          terraform show -no-color tfplan > plan.txt
+
+      - name: Upload plan artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-plan
+          path: terraform/plan.txt
